@@ -32,11 +32,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Helper function to open modal globally
-function openModal(modalId, isbn = '', title = '') {
+// Helper function to open modal globally and inject book_id dynamically
+function openModal(modalId, book_id = '', title = '') {
     const modal = document.getElementById(modalId);
-    if(isbn) {
-        modal.querySelector('input[name="isbn"]').value = isbn;
+    if(book_id) {
+        modal.querySelector('input[name="book_id"]').value = book_id; // changed from isbn to book_id
     }
     if(title) {
         const titleSpan = modal.querySelector('.modal-book-title');
