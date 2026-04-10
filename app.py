@@ -13,19 +13,34 @@ library = LibraryManagement(db)
 
 @app.route('/')
 def index():
-    # Fetch all books and active borrows for the dashboard
+    # Fetch data for the dashboard
     books = library.view_all_books()
+    users = library.get_all_users()
     active_borrows = list(library.transactions_collection.find({"status": "borrowed"}))
-    return render_template('index.html', books=books, active_borrows=active_borrows)
+    return render_template('index.html', books=books, active_borrows=active_borrows, users=users)
+
+@app.route('/register_user', methods=['POST'])
+def register_user():
+    user_id = request.form.get('user_id')
+    name = request.form.get('name')
+    
+    success, msg = library.register_user(user_id, name)
+    if success:
+        flash(msg, 'success')
+    else:
+        flash(msg, 'error')
+        
+    return redirect(url_for('index'))
 
 @app.route('/add_book', methods=['POST'])
 def add_book():
+    book_id = request.form.get('book_id')
     title = request.form.get('title')
     author = request.form.get('author')
     isbn = request.form.get('isbn')
     copies = int(request.form.get('copies', 1))
     
-    success, msg = library.add_book(title, author, isbn, copies)
+    success, msg = library.add_book(book_id, title, author, isbn, copies)
     if success:
         flash(msg, 'success')
     else:
@@ -35,10 +50,10 @@ def add_book():
 
 @app.route('/borrow', methods=['POST'])
 def borrow_book():
-    isbn = request.form.get('isbn')
-    member_name = request.form.get('member_name')
+    book_id = request.form.get('book_id')
+    user_id = request.form.get('user_id')
     
-    success, msg = library.borrow_book(isbn, member_name)
+    success, msg = library.borrow_book(book_id, user_id)
     if success:
         flash(msg, 'success')
     else:
@@ -48,10 +63,10 @@ def borrow_book():
 
 @app.route('/return_book', methods=['POST'])
 def return_book():
-    isbn = request.form.get('isbn')
-    member_name = request.form.get('member_name')
+    book_id = request.form.get('book_id')
+    user_id = request.form.get('user_id')
     
-    success, msg = library.return_book(isbn, member_name)
+    success, msg = library.return_book(book_id, user_id)
     if success:
         flash(msg, 'success')
     else:
@@ -60,5 +75,4 @@ def return_book():
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    # Start the robust Flask application on port 5000
     app.run(debug=True, port=5000)
