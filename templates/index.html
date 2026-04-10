@@ -6,7 +6,10 @@
     <div class="books-section">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h2 style="font-size: 1.5rem; font-weight: 600;">Library Collection</h2>
-            <button class="btn" style="width: auto;" onclick="openModal('addBookModal')">+ Add New Book</button>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn" style="width: auto; background: var(--accent);" onclick="openModal('registerUserModal')">+ Register User</button>
+                <button class="btn" style="width: auto;" onclick="openModal('addBookModal')">+ Add New Book</button>
+            </div>
         </div>
 
         <div class="books-container">
@@ -16,17 +19,18 @@
                 <div class="book-author">By {{ book.author }}</div>
                 
                 <div class="book-meta">
-                    <span>ISBN: {{ book.isbn }}</span>
-                    {% if book.copies_available > 0 %}
-                        <span class="badge badge-available">{{ book.copies_available }} Available</span>
+                    <span>Book ID: <strong style="color: var(--text-main);">{{ book.book_id if book.book_id else book.isbn }}</strong></span><br>
+                    <span>ISBN: {{ book.isbn }}</span><br>
+                    {% if book.get('copies_available', 0) > 0 %}
+                        <span class="badge badge-available" style="margin-top: 0.5rem; display: inline-block;">{{ book.copies_available }} Available</span>
                     {% else %}
-                        <span class="badge badge-out">Out of Stock</span>
+                        <span class="badge badge-out" style="margin-top: 0.5rem; display: inline-block;">Out of Stock</span>
                     {% endif %}
                 </div>
 
                 <div class="action-buttons">
-                    <button class="btn btn-small" onclick="openModal('borrowModal', '{{ book.isbn }}', '{{ book.title }}')" {% if book.copies_available <= 0 %}style="opacity: 0.5; cursor: not-allowed;" disabled{% endif %}>Borrow</button>
-                    <button class="btn btn-small" style="background: var(--card-border);" onclick="openModal('returnModal', '{{ book.isbn }}', '{{ book.title }}')">Return</button>
+                    <button class="btn btn-small" onclick="openModal('borrowModal', '{{ book.book_id if book.book_id else book.isbn }}', '{{ book.title }}')" {% if book.get('copies_available', 0) <= 0 %}style="opacity: 0.5; cursor: not-allowed;" disabled{% endif %}>Borrow</button>
+                    <button class="btn btn-small" style="background: var(--card-border);" onclick="openModal('returnModal', '{{ book.book_id if book.book_id else book.isbn }}', '{{ book.title }}')">Return</button>
                 </div>
             </div>
             {% else %}
@@ -39,14 +43,15 @@
 
     <!-- Sidebar Activity -->
     <div class="sidebar">
-        <div class="card">
+        <!-- Active Borrows -->
+        <div class="card" style="margin-bottom: 1.5rem;">
             <h2>Active Borrows</h2>
             {% if active_borrows %}
                 <ul class="borrow-list">
                     {% for tx in active_borrows %}
                     <li class="borrow-item">
-                        <strong>{{ tx.book_title }}</strong><br>
-                        <span style="color: var(--text-muted);">Borrowed by {{ tx.member_name }}</span>
+                        <strong>{{ tx.book_title }}</strong> (ID: {{ tx.book_id }})<br>
+                        <span style="color: var(--text-muted);">Borrowed by User ID: <strong>{{ tx.user_id }}</strong> ({{ tx.member_name }})</span>
                     </li>
                     {% endfor %}
                 </ul>
@@ -54,6 +59,42 @@
                 <p style="color: var(--text-muted); font-size: 0.9rem;">No active borrowings.</p>
             {% endif %}
         </div>
+
+        <!-- Registered Users Widget -->
+        <div class="card">
+            <h2>Registered Members</h2>
+            {% if users %}
+                <ul class="borrow-list">
+                    {% for user in users %}
+                    <li class="borrow-item" style="border-left-color: var(--primary);">
+                        <strong>{{ user.name }}</strong><br>
+                        <span style="color: var(--text-muted);">User ID: {{ user.user_id }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p style="color: var(--text-muted); font-size: 0.9rem;">No members registered yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Register User Modal -->
+<div id="registerUserModal" class="modal-overlay">
+    <div class="card modal">
+        <button class="close-modal" data-close="registerUserModal">&times;</button>
+        <h2>Register New Member</h2>
+        <form action="/register_user" method="POST">
+            <div class="form-group">
+                <label>User ID (e.g., U-101)</label>
+                <input type="text" name="user_id" class="form-control" required placeholder="Type ID explicitly...">
+            </div>
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" class="form-control" required>
+            </div>
+            <button type="submit" class="btn" style="background: var(--accent);">Register Member</button>
+        </form>
     </div>
 </div>
 
@@ -64,6 +105,10 @@
         <h2>Add to Library</h2>
         <form action="/add_book" method="POST">
             <div class="form-group">
+                <label>Book ID (Unique Catalog ID)</label>
+                <input type="text" name="book_id" class="form-control" required placeholder="e.g., B-200">
+            </div>
+            <div class="form-group">
                 <label>Book Title</label>
                 <input type="text" name="title" class="form-control" required>
             </div>
@@ -72,8 +117,8 @@
                 <input type="text" name="author" class="form-control" required>
             </div>
             <div class="form-group">
-                <label>ISBN</label>
-                <input type="text" name="isbn" class="form-control" required>
+                <label>ISBN (Optional Classification)</label>
+                <input type="text" name="isbn" class="form-control">
             </div>
             <div class="form-group">
                 <label>Copies Count</label>
@@ -93,10 +138,10 @@
             Borrowing: <strong class="modal-book-title text-main"></strong>
         </p>
         <form action="/borrow" method="POST">
-            <input type="hidden" name="isbn">
+            <input type="hidden" name="book_id">
             <div class="form-group">
-                <label>Member Name</label>
-                <input type="text" name="member_name" class="form-control" placeholder="Who is borrowing?" required>
+                <label>Member's User ID</label>
+                <input type="text" name="user_id" class="form-control" placeholder="Enter assigned User ID..." required>
             </div>
             <button type="submit" class="btn">Confirm Borrow</button>
         </form>
@@ -112,10 +157,10 @@
             Returning: <strong class="modal-book-title text-main"></strong>
         </p>
         <form action="/return_book" method="POST">
-            <input type="hidden" name="isbn">
+            <input type="hidden" name="book_id">
             <div class="form-group">
-                <label>Member Name</label>
-                <input type="text" name="member_name" class="form-control" placeholder="Who is returning?" required>
+                <label>Member's User ID</label>
+                <input type="text" name="user_id" class="form-control" placeholder="Enter returning User's ID..." required>
             </div>
             <button type="submit" class="btn">Confirm Return</button>
         </form>
